@@ -10,6 +10,7 @@ interface OpenSkyApi {
         @Query("lamin") minLatitude: Double? = null,
         @Query("lomin") minLongitude: Double? = null,
         @Query("lamax") maxLatitude: Double? = null,
-        @Query("lomax") maxLongitude: Double? = null
+        @Query("lomax") maxLongitude: Double? = null,
+        @Query("time") time: Long? = null
     ): StateResponse
 }

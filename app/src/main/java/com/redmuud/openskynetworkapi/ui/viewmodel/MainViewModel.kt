@@ -1,5 +1,6 @@
 package com.redmuud.openskynetworkapi.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.redmuud.openskynetworkapi.data.repository.OpenSkyRepository
@@ -21,6 +22,12 @@ class MainViewModel @Inject constructor(
     private val _selectedPlane = MutableStateFlow<StateVector?>(null)
     val selectedPlane = _selectedPlane.asStateFlow()
     
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading = _isLoading.asStateFlow()
+    
+    private val _error = MutableStateFlow<String?>(null)
+    val error = _error.asStateFlow()
+    
     fun loadPlanesInBoundingBox(
         minLatitude: Double,
         minLongitude: Double,
@@ -29,15 +36,24 @@ class MainViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             try {
+                _isLoading.value = true
+                _error.value = null
+                Log.d("MainViewModel", "Fetching planes data...")
+                
                 val states = repository.getStatesInBoundingBox(
                     minLatitude,
                     minLongitude,
                     maxLatitude,
                     maxLongitude
                 )
+                Log.d("MainViewModel", "Received ${states.size} planes")
                 _planes.value = states
             } catch (e: Exception) {
-                // Handle error
+                Log.e("MainViewModel", "Error fetching planes", e)
+                _error.value = "Failed to load planes: ${e.message}"
+                _planes.value = emptyList()
+            } finally {
+                _isLoading.value = false
             }
         }
     }

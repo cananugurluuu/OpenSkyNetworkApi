@@ -1,6 +1,7 @@
 package com.redmuud.openskynetworkapi
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -9,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.google.android.gms.maps.model.CameraPosition
@@ -39,7 +41,17 @@ class MainActivity : ComponentActivity() {
                     Box(modifier = Modifier.fillMaxSize()) {
                         val planes by viewModel.planes.collectAsState()
                         val selectedPlane by viewModel.selectedPlane.collectAsState()
+                        val isLoading by viewModel.isLoading.collectAsState()
+                        val error by viewModel.error.collectAsState()
                         var showFlightList by remember { mutableStateOf(false) }
+                        val context = LocalContext.current
+                        
+                        // Show error toast if there's an error
+                        LaunchedEffect(error) {
+                            error?.let {
+                                Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+                            }
+                        }
                         
                         // Initial camera position (Europe)
                         val initialPosition = LatLng(48.8566, 2.3522) // Paris
@@ -97,14 +109,25 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         
-                        // Show Flight List Button
-                        Button(
-                            onClick = { showFlightList = true },
+                        Column(
                             modifier = Modifier
                                 .align(Alignment.TopCenter)
                                 .padding(16.dp)
                         ) {
-                            Text("Show Flight List")
+                            if (isLoading) {
+                                LinearProgressIndicator(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 8.dp)
+                                )
+                            }
+                            
+                            Button(
+                                onClick = { showFlightList = true },
+                                enabled = !isLoading && planes.isNotEmpty()
+                            ) {
+                                Text(if (isLoading) "Loading..." else "Show Flight List (${planes.size})")
+                            }
                         }
                         
                         // Flight List Bottom Sheet
