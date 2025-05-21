@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.OpenSkyNetworkApi" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <style name="Theme.OpenSkyNetworkApi.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/light_gray</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_opensky</item>
+        <item name="windowSplashScreenAnimationDuration">2000</item>
+        <item name="postSplashScreenTheme">@style/Theme.OpenSkyNetworkApi</item>
+    </style>
+</resources>
