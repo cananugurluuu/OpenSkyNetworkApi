@@ -15,14 +15,11 @@ import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.*
 import com.redmuud.openskynetworkapi.ui.components.FlightListSheet
 import com.redmuud.openskynetworkapi.ui.viewmodel.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -45,6 +42,11 @@ class MainActivity : ComponentActivity() {
                         val error by viewModel.error.collectAsState()
                         var showFlightList by remember { mutableStateOf(false) }
                         val context = LocalContext.current
+                        val scope = rememberCoroutineScope()
+                        
+                        // Track if camera is being moved by user
+                        var isMapMoving by remember { mutableStateOf(false) }
+                        var lastUpdateTime by remember { mutableStateOf(0L) }
                         
                         // Show error toast if there's an error
                         LaunchedEffect(error) {
@@ -53,40 +55,66 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         
-                        // Initial camera position (Europe)
-                        val initialPosition = LatLng(48.8566, 2.3522) // Paris
+                        // Initial camera position (Istanbul)
+                        val initialPosition = LatLng(41.0082, 28.9784) // Istanbul
                         val cameraPositionState = rememberCameraPositionState {
-                            position = CameraPosition.fromLatLngZoom(initialPosition, 5f)
+                            position = CameraPosition.fromLatLngZoom(initialPosition, 9f)
                         }
                         
-                        // Load planes periodically
-                        LaunchedEffect(Unit) {
-                            while (true) {
+                        // Function to refresh data for current bounds
+                        val refreshData = {
+                            cameraPositionState.projection?.visibleRegion?.latLngBounds?.let { bounds ->
                                 viewModel.loadPlanesInBoundingBox(
-                                    minLatitude = 35.0,
-                                    minLongitude = -10.0,
-                                    maxLatitude = 60.0,
-                                    maxLongitude = 25.0
+                                    minLatitude = bounds.southwest.latitude,
+                                    minLongitude = bounds.southwest.longitude,
+                                    maxLatitude = bounds.northeast.latitude,
+                                    maxLongitude = bounds.northeast.longitude
                                 )
-                                delay(10000) // Update every 10 seconds
                             }
                         }
                         
-                        // Update camera position when a plane is selected
-                        LaunchedEffect(selectedPlane) {
-                            selectedPlane?.let { plane ->
-                                if (plane.latitude != null && plane.longitude != null) {
-                                    cameraPositionState.position = CameraPosition.fromLatLngZoom(
-                                        LatLng(plane.latitude, plane.longitude),
-                                        12f
-                                    )
+                        // Update data when camera movement ends
+                        LaunchedEffect(cameraPositionState.position) {
+                            if (!isMapMoving) {
+                                val currentTime = System.currentTimeMillis()
+                                // Only update if more than 2 seconds have passed since last update
+                                if (currentTime - lastUpdateTime > 2000) {
+                                    lastUpdateTime = currentTime
+                                    refreshData()
+                                }
+                            }
+                        }
+                        
+                        // Periodic refresh every 10 seconds when map is not moving
+                        LaunchedEffect(Unit) {
+                            while (isActive) {
+                                delay(10000) // Wait for 10 seconds
+                                if (!isMapMoving && !isLoading) {
+                                    refreshData()
                                 }
                             }
                         }
                         
                         GoogleMap(
                             modifier = Modifier.fillMaxSize(),
-                            cameraPositionState = cameraPositionState
+                            cameraPositionState = cameraPositionState,
+                            onMapLoaded = {
+                                // Initial data load
+                                scope.launch {
+                                    refreshData()
+                                }
+                            },
+                            onMapClick = {
+                                viewModel.selectPlane(null)
+                            },
+                            properties = MapProperties(
+                                isMyLocationEnabled = false
+                            ),
+                            uiSettings = MapUiSettings(
+                                compassEnabled = true,
+                                zoomControlsEnabled = true,
+                                myLocationButtonEnabled = false
+                            )
                         ) {
                             planes.forEach { plane ->
                                 if (plane.latitude != null && plane.longitude != null) {

@@ -27,6 +27,27 @@ class MainViewModel @Inject constructor(
     
     private val _error = MutableStateFlow<String?>(null)
     val error = _error.asStateFlow()
+
+    // Istanbul bounding box coordinates
+    private val istanbulBounds = BoundingBox(
+        minLatitude = 40.226013967,
+        minLongitude = 27.3445316488,
+        maxLatitude = 41.6004635693,
+        maxLongitude = 30.7411966586
+    )
+    
+    init {
+        loadPlanesInIstanbul()
+    }
+    
+    private fun loadPlanesInIstanbul() {
+        loadPlanesInBoundingBox(
+            minLatitude = istanbulBounds.minLatitude,
+            minLongitude = istanbulBounds.minLongitude,
+            maxLatitude = istanbulBounds.maxLatitude,
+            maxLongitude = istanbulBounds.maxLongitude
+        )
+    }
     
     fun loadPlanesInBoundingBox(
         minLatitude: Double,
@@ -38,19 +59,29 @@ class MainViewModel @Inject constructor(
             try {
                 _isLoading.value = true
                 _error.value = null
-                Log.d("MainViewModel", "Fetching planes data...")
                 
-                val states = repository.getStatesInBoundingBox(
+                Log.d("MainViewModel", "Fetching planes data for bounds: ($minLatitude, $minLongitude) to ($maxLatitude, $maxLongitude)")
+                
+                repository.getStatesInBoundingBox(
                     minLatitude,
                     minLongitude,
                     maxLatitude,
                     maxLongitude
+                ).fold(
+                    onSuccess = { states ->
+                        Log.d("MainViewModel", "Successfully received ${states.size} planes")
+                        _planes.value = states
+                        _error.value = null
+                    },
+                    onFailure = { exception ->
+                        Log.e("MainViewModel", "Error loading planes", exception)
+                        _error.value = exception.message
+                        _planes.value = emptyList()
+                    }
                 )
-                Log.d("MainViewModel", "Received ${states.size} planes")
-                _planes.value = states
             } catch (e: Exception) {
-                Log.e("MainViewModel", "Error fetching planes", e)
-                _error.value = "Failed to load planes: ${e.message}"
+                Log.e("MainViewModel", "Unexpected error", e)
+                _error.value = "An unexpected error occurred: ${e.message}"
                 _planes.value = emptyList()
             } finally {
                 _isLoading.value = false
@@ -58,7 +89,14 @@ class MainViewModel @Inject constructor(
         }
     }
     
-    fun selectPlane(plane: StateVector) {
+    fun selectPlane(plane: StateVector?) {
         _selectedPlane.value = plane
     }
 }
+
+private data class BoundingBox(
+    val minLatitude: Double,
+    val minLongitude: Double,
+    val maxLatitude: Double,
+    val maxLongitude: Double
+)

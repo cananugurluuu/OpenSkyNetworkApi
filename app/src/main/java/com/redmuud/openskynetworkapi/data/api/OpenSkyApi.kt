@@ -7,10 +7,10 @@ import retrofit2.http.Query
 interface OpenSkyApi {
     @GET("states/all")
     suspend fun getAllStates(
-        @Query("lamin") minLatitude: Double? = null,
-        @Query("lomin") minLongitude: Double? = null,
-        @Query("lamax") maxLatitude: Double? = null,
-        @Query("lomax") maxLongitude: Double? = null,
-        @Query("time") time: Long? = null
+        @Query("lamin") minLatitude: Double,
+        @Query("lomin") minLongitude: Double,
+        @Query("lamax") maxLatitude: Double,
+        @Query("lomax") maxLongitude: Double,
+        @Query("extended") extended: Int = 1
     ): StateResponse
 }
